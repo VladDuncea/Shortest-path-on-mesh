@@ -33,7 +33,11 @@ public class CameraManager : MonoBehaviour
             float rotatieOrizontala = Input.GetAxis("Mouse X");
             float rotatieVerticala = Input.GetAxis("Mouse Y");
 
+            // Privire sus jos
             transform.RotateAround(transform.position, Vector3.up , rotatieOrizontala * vitezaRotatie * Time.deltaTime);
+
+            // Privire stanga dreapta
+            transform.Rotate(Vector3.left, rotatieVerticala * vitezaRotatie * Time.deltaTime, Space.Self);
         }
         
         if(Input.GetKeyDown(KeyCode.LeftShift))
@@ -42,12 +46,14 @@ public class CameraManager : MonoBehaviour
             if(modRotire)
             {
                 Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
             }
             else
             {
                 Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
             }
-            
+
         }
     }
 }

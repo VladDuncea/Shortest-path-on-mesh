@@ -5,6 +5,13 @@ using System.Linq;
 using UnityEngine;
 using TMPro;
 
+public enum TipAlgoritm
+{
+    Backtracking,
+    Dijkstra,
+    Astar
+}
+
 public class Punct
 {
     public int index;
@@ -58,6 +65,9 @@ public class PointsData
     // Prefab-uri
     GameObject prefabPunct, prefabLinie;
 
+    // Culori
+    Color culoareDefaultLinie;
+
     // Materiale 
     private Material defaultPointMaterial, startPointMaterial, endPointMaterial;
 
@@ -74,6 +84,9 @@ public class PointsData
 
         this.prefabPunct = prefabPunct;
         this.prefabLinie = prefabLinie;
+
+        // Luam culoarea default a liniei
+        culoareDefaultLinie = prefabLinie.GetComponent<LineRenderer>().startColor;
     }
 
     private void AddPoint(Vector3 punct)
@@ -186,7 +199,7 @@ public class PointsData
 
             // Adaugam punctul
             // Vom pune in ordinea 0,2,1 pt ca y este aici axa verticala
-            this.AddPoint(new Vector3(int.Parse(coordonate[0]), int.Parse(coordonate[2]), int.Parse(coordonate[1])));
+            this.AddPoint(new Vector3(float.Parse(coordonate[0]), float.Parse(coordonate[2]), float.Parse(coordonate[1])));
         }
 
         // Ultimele linii sunt vecinii fiecarui punct
@@ -267,10 +280,13 @@ public class PointsData
         }
     }
 
-    public IEnumerator AplicaBacktracking()
+    public IEnumerator AplicaBacktracking(System.Action callback)
     {
         if (!GataDeAlgoritm())
             yield break;
+
+        // Reseteaza culorile
+        ResetCuloare();
 
         // Stergem fostul drum
         drumMinimCalculat = null;
@@ -334,9 +350,235 @@ public class PointsData
 
         drumMinimCalculat = drumMinim;
         AfisareDrum();
+
+        callback?.Invoke();
     }
 
-    public void AfisareDrum(List<int> drum = null)
+    public IEnumerator AplicaDijkstra(System.Action callback)
+    {
+        if (!GataDeAlgoritm())
+            yield break;
+
+        // Reseteaza culorile
+        ResetCuloare();
+
+        // Date necesare pt algoritm
+        List<int> parinte = Enumerable.Repeat(-1, points.Count).ToList();
+        List<double> distanta = Enumerable.Repeat(double.PositiveInfinity, points.Count).ToList();
+        List<bool> vizitat = Enumerable.Repeat(false, points.Count).ToList();
+
+        // Introducem nodul de start
+        // TODO posib sa mergi invers
+        List<DateDinamica> priorityQueue = new List<DateDinamica>();
+        priorityQueue.Add(new DateDinamica(startPoint, 0));
+        // Setam distanta de la nodul de start cu 0
+        distanta[startPoint] = 0;
+
+        // Rulam cat avem noduri nedescoperite in lista
+        while(priorityQueue.Count != 0)
+        {
+            // Extragem nodul din queue
+            int nod = priorityQueue[0].nodCurent;
+            double costNod = priorityQueue[0].cost;
+            priorityQueue.RemoveAt(0);
+
+            // Avand in vedere ca nu eliminam nodurile cu un cost mai bun verificam sa nu avem dubluri
+            if(vizitat[nod])
+            {
+                // Ignoram
+                continue;
+            }
+
+            // Marcam nodul ca vizitat
+            vizitat[nod] = true;
+
+            // Verificam daca nodul extras este nodul scop
+            if(nod == endPoint)
+            {
+                // Oprim algoritmul
+                break;
+            }
+
+            // Avansam toate nodurile vecine care nu au fost deja calculate
+            int nrVecini = points[nod].vecini.Count;
+            for (int i = 0; i < nrVecini; i++)
+            {
+                int vecin = points[nod].vecini[i];
+                //verificam daca am mai fost in acest nod
+                if (vizitat[vecin])
+                {
+                    //vecinul e deja in drum, il sarim
+                    continue;
+                }
+
+                // Calculam costul
+                double costVecin = costNod + Vector3.Distance(points[nod].coordonate, points[vecin].coordonate);
+
+                // Verificam daca costul e mai bun decat ceva ce am gasit deja
+                if(costVecin >= distanta[vecin])
+                {
+                    // Ignoram
+                    continue;
+                }
+
+                // Actualizam noua distanta
+                distanta[vecin] = costVecin;
+                // Actualizam parintele vecinului
+                parinte[vecin] = nod;
+
+                // Afisam noua linie
+                int indexVecin = points[nod].vecini.FindIndex(x => x == vecin);
+                points[nod].linii[indexVecin].SetActive(true);
+                // Asteptam durata unui pas
+                yield return new WaitForSeconds(delayPasAlgoritm);
+
+                // Construim obiectul cu datele
+                DateDinamica dateDinamica = new DateDinamica(vecin, costVecin);
+
+                // Inseram in lista ordonata la pozitia potrivita
+                int poz = priorityQueue.BinarySearch(dateDinamica);
+                // Nu exista un nod cu costul acesta, asa ca facem complementul binar pentru a afla pozitia pe care il inseram pentru a pastra lista sortata
+                if (poz < 0)
+                    poz = ~poz;
+                priorityQueue.Insert(poz, dateDinamica);
+            }
+
+        }
+
+        // Verificam daca am gasit drum
+        if(distanta[endPoint] != double.PositiveInfinity)
+        {
+            // Construim drumul
+            List<int> drum = new List<int>();
+            int nodDrum = endPoint;
+            drum.Add(nodDrum);
+            while (parinte[nodDrum] != -1)
+            {
+                nodDrum = parinte[nodDrum];
+                drum.Add(nodDrum);
+            }
+            drum.Reverse();
+
+            // Memoram drumul
+            drumMinimCalculat = drum;
+
+            // Afisam drumul
+            AfisareDrum(doarCuloare: true);
+        }
+
+        callback?.Invoke();
+    }
+
+    public IEnumerator AplicaAStar(System.Action callback, System.Func<Vector3,Vector3,float> aproximare)
+    {
+        if (!GataDeAlgoritm())
+            yield break;
+
+        // Reseteaza culorile
+        ResetCuloare();
+
+        // Introducem nodul de start
+        List<DateAStar> priorityQueue = new List<DateAStar>();
+        priorityQueue.Add(new DateAStar(startPoint, 0, 0));
+
+        // Lista cu nodurile vizitate pentru a le ignora ulterior
+        List<bool> noduriVizitate = Enumerable.Repeat(false, points.Count).ToList();
+
+        // Nodul de final
+        DateAStar final = null;
+
+        // Rulam cat avem noduri nedescoperite in lista
+        while (priorityQueue.Count != 0)
+        {
+            // Extragem nodul din queue
+            DateAStar nodExtras = priorityQueue[0];
+            priorityQueue.RemoveAt(0);
+
+            // Verificam daca nodul extras este nodul scop
+            if (nodExtras.nodCurent == endPoint)
+            {
+                // Am terminat
+                final = nodExtras;
+                break;
+            }
+
+            // Avand in vedere ca nu eliminam nodurile cu un cost mai bun verificam sa nu avem dubluri
+            if (noduriVizitate[nodExtras.nodCurent])
+            {
+                // Ignoram
+                continue;
+            }
+
+            // Marcam nodul ca vizitat
+            noduriVizitate[nodExtras.nodCurent] = true;
+
+            // Avansam toate nodurile vecine
+            int nrVecini = points[nodExtras.nodCurent].vecini.Count;
+            for (int i = 0; i < nrVecini; i++)
+            {
+                int vecin = points[nodExtras.nodCurent].vecini[i];
+
+                // verificam daca nodul e in lista de vizitate
+                if (noduriVizitate[vecin])
+                {
+                    //vecinul e deja in drum, il sarim
+                    continue;
+                }
+
+                // Construim datele pentru vecin
+                DateAStar dateVecin = new DateAStar(vecin, nodExtras.cost, -1);
+
+                // Calculam costul
+                dateVecin.cost += Vector3.Distance(points[nodExtras.nodCurent].coordonate, points[vecin].coordonate);
+
+                // Calculam aproximarea
+                dateVecin.aproximat = aproximare(points[vecin].coordonate, points[endPoint].coordonate);
+
+                // Setam parintele nodului
+                dateVecin.parinte = nodExtras;
+
+                // Afisam noua linie
+                int indexVecin = points[nodExtras.nodCurent].vecini.FindIndex(x => x == vecin);
+                points[nodExtras.nodCurent].linii[indexVecin].SetActive(true);
+
+                // Asteptam durata unui pas
+                yield return new WaitForSeconds(delayPasAlgoritm);
+
+                // Inseram in lista ordonata la pozitia potrivita
+                int poz = priorityQueue.BinarySearch(dateVecin);
+                // Nu exista un nod cu costul acesta, asa ca facem complementul binar pentru a afla pozitia pe care il inseram pentru a pastra lista sortata
+                if (poz < 0)
+                    poz = ~poz;
+                priorityQueue.Insert(poz, dateVecin);
+            }
+
+        }
+
+        // Verificam daca am gasit drum
+        if (final != null)
+        {
+            // Construim drumul
+            List<int> drum = new List<int>();
+
+            drum.Add(final.nodCurent);
+            while (final.parinte != null)
+            {
+                final = final.parinte;
+                drum.Add(final.nodCurent);
+            }
+            drum.Reverse();
+
+            // Memoram drumul
+            drumMinimCalculat = drum;
+
+            // Afisam drumul
+            AfisareDrum(doarCuloare: true);
+        }
+
+        callback?.Invoke();
+    }
+
+    public void AfisareDrum(List<int> drum = null, bool doarCuloare = false)
     {
         // Daca nu avem inca un drum nu facem nimic
         if(drum == null && drumMinimCalculat == null)
@@ -344,7 +586,9 @@ public class PointsData
             return;
         }
 
-        AscundeLiniile();
+        // Ascundem liniile deja desenate doar in cazul in care nu vrem culoare
+        if(!doarCuloare)
+            AscundeLiniile();
 
         // Daca userul nu seteaza un drum il alegem noi
         if(drum == null)
@@ -360,8 +604,32 @@ public class PointsData
             // Cautam pozitia nodului viitor in vecinii nodului curent
             int pozVecin = points[drum[i]].vecini.FindIndex(x => x == drum[i + 1]);
 
-            // Afisam linia
-            points[drum[i]].linii[pozVecin].SetActive(true);
+            if (doarCuloare)
+            {
+                // Coloram linia
+                points[drum[i]].linii[pozVecin].GetComponent<LineRenderer>().startColor = Color.green;
+                points[drum[i]].linii[pozVecin].GetComponent<LineRenderer>().endColor = Color.green;
+            }
+            else
+            {
+                // Afisam linia
+                points[drum[i]].linii[pozVecin].SetActive(true); 
+            }
+        }
+    }
+
+    private void ResetCuloare()
+    {
+        // Pentru fiecare punct
+        foreach (Punct p in points)
+        {
+            // Pentru fiecare linie
+            foreach (GameObject linie in p.linii)
+            {
+                // Coloram linia
+                linie.GetComponent<LineRenderer>().startColor = culoareDefaultLinie;
+                linie.GetComponent<LineRenderer>().endColor = culoareDefaultLinie;
+            }
         }
     }
 
@@ -383,6 +651,11 @@ public class PointsData
         }
 
         return true;
+    }
+
+    public void UpdateDelay(float delay)
+    {
+        delayPasAlgoritm = delay;
     }
 }
 
@@ -417,6 +690,53 @@ public class DateBacktrck
 
 #endregion Backtracking
 
+#region Dijkstra
+
+public class DateDinamica : System.IComparable<DateDinamica>
+{
+    public int nodCurent;
+    public double cost;
+
+    public DateDinamica(int nodCurent, double cost)
+    {
+        this.nodCurent = nodCurent;
+        this.cost = cost;
+    }
+
+    public int CompareTo(DateDinamica other)
+    {
+        return this.cost.CompareTo(other.cost);
+    }
+}
+
+#endregion
+
+#region AStar
+
+public class DateAStar : System.IComparable<DateAStar>
+{
+    public int nodCurent;
+    public double cost,aproximat;
+    public DateAStar parinte;
+
+    public DateAStar(int nodCurent, double cost, double aproximat)
+    {
+        this.nodCurent = nodCurent;
+        this.cost = cost;
+        this.aproximat = aproximat;
+        parinte = null;
+    }
+
+    public int CompareTo(DateAStar other)
+    {
+        double total, totalvs;
+        total = cost + aproximat;
+        totalvs = other.cost + other.aproximat;
+        return total.CompareTo(totalvs);
+    }
+}
+
+#endregion
 
 public class AppManager : MonoBehaviour
 {
@@ -450,10 +770,10 @@ public class AppManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        // La apasare esc iesi
+        // La apasare esc afiseaza fereastra iesire
         if(Input.GetKeyDown(KeyCode.Escape))
         {
-            Application.Quit();
+            uiManager.AfiseazaFereastraIesire();
         }
     }
 
@@ -517,8 +837,26 @@ public class AppManager : MonoBehaviour
         // Ascundem liniile
         data.AscundeLiniile();
 
-        // Aplicam Backtracking
-        StartCoroutine(data.AplicaBacktracking());
+        // Aplicam Algoritm
+        if (uiManager.AlgoritmAles() == TipAlgoritm.Backtracking)
+        {
+            StartCoroutine(data.AplicaBacktracking(FinalCorutina));
+        }
+        else if (uiManager.AlgoritmAles() == TipAlgoritm.Dijkstra)
+        {
+            StartCoroutine(data.AplicaDijkstra(FinalCorutina));
+        }
+        else if (uiManager.AlgoritmAles() == TipAlgoritm.Astar)
+        {
+            StartCoroutine(data.AplicaAStar(FinalCorutina,Vector3.Distance));
+        }
+
+        uiManager.UiRulare();
+    }
+
+    private void FinalCorutina()
+    {
+        uiManager.UiStandard();
     }
 
     public void AfiseazaDrum()
@@ -534,5 +872,16 @@ public class AppManager : MonoBehaviour
     public void AlegeStop()
     {
         data?.AlegeStop();
+    }
+
+    public void Stop()
+    {
+        StopAllCoroutines();
+    }
+
+    public void UpdatePasiPeSecunda(float pasi)
+    {
+        delayPasAlgoritm = 1 / pasi;
+        data?.UpdateDelay(delayPasAlgoritm);
     }
 }
