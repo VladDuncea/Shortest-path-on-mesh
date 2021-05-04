@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
+public delegate void OneFloatDelegate(float scara);
 
 public class UiManager : MonoBehaviour
 {
@@ -12,9 +15,20 @@ public class UiManager : MonoBehaviour
     private GameObject grupInitializare, grupAlgoritm, grupButoaneAlege, fereastraIesire, dropdownAlgoritm, butonStop;
 
     [SerializeField]
+    private GameObject grupStatistici;
+    [SerializeField]
+    private TextMeshProUGUI textMuchii, textNoduri, textDistanta, textDurata;
+
+    [SerializeField]
     private GameObject popupOk;
     [SerializeField]
     private TextMeshProUGUI textPopupOk;
+
+    [SerializeField]
+    private Slider scaleSlider;
+
+    // Evenimente
+    public event OneFloatDelegate scalarePunct;
 
     // Start is called before the first frame update
     void Start()
@@ -38,6 +52,7 @@ public class UiManager : MonoBehaviour
     {
         grupAlgoritm.SetActive(false);
         grupInitializare.SetActive(false);
+        AscundeStatistici();
     }
 
     public void AfiseazaUI()
@@ -92,6 +107,8 @@ public class UiManager : MonoBehaviour
             case 1:
                 return TipAlgoritm.Dijkstra;
             case 2:
+                return TipAlgoritm.DijkstraDual;
+            case 3:
                 return TipAlgoritm.Astar;
         }
 
@@ -103,6 +120,7 @@ public class UiManager : MonoBehaviour
     {
         // Ascunde Ui
         grupInitializare.SetActive(false);
+        AscundeStatistici();
 
         // Ascunde doar o parte din obiecte
         for(int i = 0; i < grupAlgoritm.transform.childCount; ++i) {
@@ -149,5 +167,25 @@ public class UiManager : MonoBehaviour
         {
             appManager.UpdatePasiPeSecunda(pasi);
         }
+    }
+
+    public void AscundeStatistici()
+    {
+        grupStatistici.SetActive(false);
+    }
+
+    public void AfiseazaStatistici(Statistici stats)
+    {
+        textNoduri.text = stats.numarNoduri.ToString();
+        textMuchii.text = stats.numarMuchii.ToString();
+        textDistanta.text = stats.distanta.ToString("N2");
+        textDurata.text = stats.durataRulare.ToString("f6");
+        grupStatistici.SetActive(true);
+    }
+
+    // Invoked when the value of the slider changes.
+    public void OnSliderValueChanged()
+    {
+        scalarePunct?.Invoke(scaleSlider.value);
     }
 }

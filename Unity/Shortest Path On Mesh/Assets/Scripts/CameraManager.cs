@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class CameraManager : MonoBehaviour
 {
@@ -11,13 +12,9 @@ public class CameraManager : MonoBehaviour
 
     private bool modRotire = false;
 
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
+    [SerializeField]
+    private Slider sliderViteza;
 
-    
     void Update()
     {
         // La fiecare frame verificam pe ce taste apasa utilizatorul
@@ -55,5 +52,10 @@ public class CameraManager : MonoBehaviour
             }
 
         }
+    }
+
+    public void OnValueChangedSliderViteza()
+    {
+        vitezaMiscare = sliderViteza.value;
     }
 }
