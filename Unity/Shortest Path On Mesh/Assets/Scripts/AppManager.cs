@@ -31,7 +31,6 @@ public class Fata
         this.nod3 = nod3.index;
     }
 }
-}
 
 public class Punct
 {
@@ -1217,9 +1216,32 @@ public class PointsData
                     AddLineBetweenPoints(punctMijloc, p3);
 
                     // Construim cele 3 fete noi
-                    Fata f1 = new Fata()
+                    Fata f1 = new Fata(p1, p2, punctMijloc);
+                    Fata f2 = new Fata(p1, p3, punctMijloc);
+                    Fata f3 = new Fata(p2, p3, punctMijloc);
 
-                    feteSparte.Add(f);
+                    // Marcam faptul ca fetele sunt construite in iteratia curenta
+                    feteSparte.Add(f1);
+                    feteSparte.Add(f2);
+                    feteSparte.Add(f3);
+
+                    // Marcam faptul ca punctul de mijloc apartine celor 3 fete
+                    punctMijloc.fete.Add(f1);
+                    punctMijloc.fete.Add(f2);
+                    punctMijloc.fete.Add(f3);
+
+                    // Eliminam fata veche din nodurile p1..p3 si le adaugam noile fete
+                    p1.fete.Remove(f);
+                    p1.fete.Add(f1);
+                    p1.fete.Add(f2);
+
+                    p2.fete.Remove(f);
+                    p2.fete.Add(f1);
+                    p2.fete.Add(f3);
+
+                    p3.fete.Remove(f);
+                    p3.fete.Add(f2);
+                    p3.fete.Add(f3);
                 }
             }
 
