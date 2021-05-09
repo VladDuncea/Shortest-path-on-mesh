@@ -13,12 +13,33 @@ public enum TipAlgoritm
     Astar
 }
 
+public class Fata
+{
+    public int nod1, nod2, nod3;
+
+    public Fata(int nod1,int nod2,int nod3)
+    {
+        this.nod1 = nod1;
+        this.nod2 = nod2;
+        this.nod3 = nod3;
+    }
+
+    public Fata(Punct nod1, Punct nod2, Punct nod3)
+    {
+        this.nod1 = nod1.index;
+        this.nod2 = nod2.index;
+        this.nod3 = nod3.index;
+    }
+}
+}
+
 public class Punct
 {
     public int index;
     public Vector3 coordonate;
     public List<int> vecini;
     public List<GameObject> linii;
+    public List<Fata> fete;
     public GameObject scenePoint;
 
     public Punct(int index, Vector3 coordonate, GameObject scenePoint)
@@ -27,6 +48,7 @@ public class Punct
         this.coordonate = coordonate;
         vecini = new List<int>();
         linii = new List<GameObject>();
+        fete = new List<Fata>();
         this.scenePoint = scenePoint;
     }
 
@@ -141,7 +163,7 @@ public class PointsData
         this.UI = UI;
     }
 
-    private void AddPoint(Vector3 punct)
+    private Punct AddPoint(Vector3 punct)
     {
         // Construim punctul vizual
         GameObject scenePoint = Object.Instantiate(prefabPunct, punct, prefabPunct.transform.rotation);
@@ -170,6 +192,8 @@ public class PointsData
 
         // Crestem counterul pentru numarul de puncte
         nrPoints++;
+
+        return p;
     }
 
     private void clickPePunct(int indexPunct)
@@ -251,8 +275,12 @@ public class PointsData
         {
             points[p2].vecini.Add(p1);
             points[p2].linii.Add(null);
-
         }
+    }
+
+    private void AddLineBetweenPoints(Punct p1, Punct p2)
+    {
+        AddLineBetweenPoints(p1.index, p2.index);
     }
 
     public void ReadPointsFromFile(string path)
@@ -362,6 +390,14 @@ public class PointsData
             int punct1 = int.Parse(bucati[1].Split('/')[0]) - 1;
             int punct2 = int.Parse(bucati[2].Split('/')[0]) - 1;
             int punct3 = int.Parse(bucati[3].Split('/')[0]) - 1;
+
+            // Construim o fata cu punctele acestea
+            Fata f = new Fata(punct1, punct2, punct3);
+
+            // Marcam faptul ca punctele apartin fetei
+            points[punct1].fete.Add(f);
+            points[punct2].fete.Add(f);
+            points[punct3].fete.Add(f);
 
             // Construim cele 3 legaturi dintre puncte
             AddLineBetweenPoints(punct1, punct2);
@@ -962,6 +998,237 @@ public class PointsData
             // Afisam drumul
             AfisareDrum(doarCuloare: true);
         }
+
+        callback?.Invoke();
+    }
+
+    public IEnumerator AplicaDijkstraDualCuRafinare(System.Action callback)
+    {
+        if (!GataDeAlgoritm())
+            yield break;
+
+        // Memoram timpul de start
+        float startTime = Time.realtimeSinceStartup;
+
+        // Numarul de iteratii de repetare
+        int iteratii = 5;
+
+        // Reseteaza culorile
+        ResetCuloare();
+
+        while(iteratii > 0)
+        {
+            // Facem un pas
+            iteratii--;
+
+            // Date necesare pt algoritm
+            List<List<int>> parinte = new List<List<int>>();
+            // Vectorul de parinti va fi dublat aici ( un vector pentru parintele de pe partea start, unul pt parintele de pe partea scop)
+            parinte.Add(Enumerable.Repeat(-1, points.Count).ToList());
+            parinte.Add(Enumerable.Repeat(-1, points.Count).ToList());
+            List<List<double>> distanta = new List<List<double>>();
+            distanta.Add(Enumerable.Repeat(double.PositiveInfinity, points.Count).ToList());
+            distanta.Add(Enumerable.Repeat(double.PositiveInfinity, points.Count).ToList());
+            List<int> vizitat = Enumerable.Repeat(0, points.Count).ToList(); // 0 - nevizitat | 1- vizitat de start | 2- vizitat de scop
+
+            // Introducem nodul de start
+            List<DateDinamicaDual> priorityQueue = new List<DateDinamicaDual>();
+            priorityQueue.Add(new DateDinamicaDual(startPoint, 0, 1));
+            priorityQueue.Add(new DateDinamicaDual(endPoint, 0, 2));
+            // Setam distanta de la nodul de start cu 0
+            distanta[0][startPoint] = 0;
+            distanta[1][endPoint] = 0;
+
+            // Variabila pentru a memora nodul de intersectie
+            int nodMijloc = -1;
+
+            // Variabila stocare statistici rulare
+            Statistici stats = new Statistici();
+
+            int pasiFaraPauza = 0;
+
+            // Rulam cat avem noduri nedescoperite in lista
+            while (priorityQueue.Count != 0)
+            {
+                // Extragem nodul din queue
+                int nod = priorityQueue[0].nodCurent;
+                double costNod = priorityQueue[0].cost;
+                int parte = priorityQueue[0].parte;
+                priorityQueue.RemoveAt(0);
+
+                // Verificam daca nodul extras a fost vizitat de cealalta parte
+                if (vizitat[nod] != 0 && vizitat[nod] != parte)
+                {
+                    // Oprim algoritmul
+                    nodMijloc = nod;
+                    break;
+                }
+
+                // Ignoram nodurile vizitate deja de partea noastra (putem sa avem un cost mai prost in queue)
+                if (vizitat[nod] == parte)
+                {
+                    // Ignoram
+                    continue;
+                }
+
+                // Numaram nodul la statistici
+                stats.numarNoduri++;
+
+                // Marcam nodul ca vizitat
+                vizitat[nod] = parte;
+
+                // Avansam toate nodurile vecine care nu au fost deja calculate
+                int nrVecini = points[nod].vecini.Count;
+                for (int i = 0; i < nrVecini; i++)
+                {
+                    int vecin = points[nod].vecini[i];
+                    // verificam daca am mai fost in acest nod din partea noastra
+                    if (vizitat[vecin] == parte)
+                    {
+                        //vecinul e deja vizitat, il sarim
+                        continue;
+                    }
+
+                    // Calculam costul
+                    double costVecin = costNod + Vector3.Distance(points[nod].coordonate, points[vecin].coordonate);
+
+                    // Numaram muchia la statistici
+                    stats.numarMuchii++;
+
+                    // Verificam daca costul e mai bun decat ceva ce am gasit deja
+                    if (costVecin >= distanta[parte - 1][vecin])
+                    {
+                        // Daca nu il ignoram
+                        continue;
+                    }
+
+                    // Actualizam noua distanta
+                    distanta[parte - 1][vecin] = costVecin;
+                    // Actualizam parintele vecinului
+                    parinte[parte - 1][vecin] = nod;
+
+                    // Afisam noua linie
+                    int indexVecin = points[nod].vecini.FindIndex(x => x == vecin);
+                    points[nod].linii[indexVecin].SetActive(true);
+
+                    // Asteptam pentru 'frecventaSecunde' la numarul necesar de pasi
+                    pasiFaraPauza++;
+                    if (pasiPeSecunda * frecventaUpdate < pasiFaraPauza)
+                    {
+                        pasiFaraPauza = 0;
+                        yield return new WaitForSeconds(frecventaUpdate);
+                    }
+
+                    // Construim obiectul cu datele
+                    DateDinamicaDual dateDinamica = new DateDinamicaDual(vecin, costVecin, parte);
+
+                    // Inseram in lista ordonata la pozitia potrivita
+                    int poz = priorityQueue.BinarySearch(dateDinamica);
+                    // Nu exista un nod cu costul acesta, asa ca facem complementul binar pentru a afla pozitia pe care il inseram pentru a pastra lista sortata
+                    if (poz < 0)
+                        poz = ~poz;
+                    priorityQueue.Insert(poz, dateDinamica);
+                }
+            }
+
+            if (nodMijloc == -1)
+            {
+                // Nu avem drum -> iesim
+                callback?.Invoke();
+                yield break;
+            }
+
+            // La ultima iteratie afisam si memoram drumul
+            if (nodMijloc != -1)
+            {
+                // Construim drumul
+                List<int> drum = new List<int>();
+
+                // Incepem din nodul de mijloc spre final
+                int nodDrum = nodMijloc;
+                drum.Add(nodDrum);
+                while (parinte[1][nodDrum] != -1)
+                {
+                    nodDrum = parinte[1][nodDrum];
+                    drum.Add(nodDrum);
+                }
+                // Invesam ordinea(nodul de sfarsit va fi primul in vector)
+                drum.Reverse();
+
+                // Mergem din mijloc spre inceput
+                nodDrum = nodMijloc;
+                while (parinte[0][nodDrum] != -1)
+                {
+                    nodDrum = parinte[0][nodDrum];
+                    drum.Add(nodDrum);
+                }
+                // Invesam ordinea (nodul de inceput va fi primul in vector)
+                drum.Reverse();
+
+                // Memoram drumul
+                drumMinimCalculat = drum;
+
+                // Memoram drumul si distanta in statistici
+                stats.drum = drum;
+                stats.distanta = distanta[0][nodMijloc] + distanta[1][nodMijloc];
+
+                // Calculare timp rulare
+                stats.durataRulare = Time.realtimeSinceStartup - startTime;
+
+                // Memoram statisticile global
+                this.statistici = stats;
+
+                
+            }
+
+            // Generam noi noduri pentru a rafina 
+            // Luam fiecare nod din drum si pentru fiecare fata din care apartine adaugam un nod la mijloc si il legam de nodurile fetei
+            HashSet<Fata> feteSparte = new HashSet<Fata>();
+
+            // Pastram in un dictionar fetele deja parcurse
+            foreach(int nod in drumMinimCalculat)
+            {
+                Punct p = points[nod];
+
+                // Lista noua(lista nodului se va schimba pe masura ce spargem fetele
+                List<Fata> listaInterna = new List<Fata>(p.fete);
+
+                foreach(Fata f in listaInterna)
+                {
+                    // Verificam sa nu fie o fata sparta deja
+                    if(feteSparte.Contains(f))
+                    {
+                        continue;
+                    }
+
+                    Punct p1 = points[f.nod1];
+                    Punct p2 = points[f.nod2];
+                    Punct p3 = points[f.nod3];
+
+                    // Calculam coordonatele noului punct
+                    Vector3 coordPunctMijloc = (p1.coordonate + p2.coordonate + p3.coordonate)/3;
+
+                    // Adaugam punctul in scena si in date
+                    Punct punctMijloc = AddPoint(coordPunctMijloc);
+
+                    // Construim noile legaturi
+                    AddLineBetweenPoints(punctMijloc, p1);
+                    AddLineBetweenPoints(punctMijloc, p2);
+                    AddLineBetweenPoints(punctMijloc, p3);
+
+                    // Construim cele 3 fete noi
+                    Fata f1 = new Fata()
+
+                    feteSparte.Add(f);
+                }
+            }
+
+            // Apelam afisare linii pentru a ne genera noile linii
+            AfisareLinii();
+        }
+
+        // Afisam drumul
+        AfisareDrum(doarCuloare: true);
 
         callback?.Invoke();
     }
