@@ -110,6 +110,8 @@ public class UiManager : MonoBehaviour
                 return TipAlgoritm.DijkstraDual;
             case 3:
                 return TipAlgoritm.Astar;
+            case 4:
+                return TipAlgoritm.RafinareDijkstraDual;
         }
 
         // In caz de eroare intoarce backtracking
@@ -158,6 +160,11 @@ public class UiManager : MonoBehaviour
 
         // Ascunde buton stop
         butonStop.SetActive(false);
+    }
+
+    public void ClickButonAfisareLinii()
+    {
+
     }
 
     public void PasiPeSecundaOnValueChanged(string valoare)
