@@ -92,6 +92,33 @@ public class Punct
             linie.GetComponent<LineRenderer>().startWidth = scara/3;
         }
     }
+
+    public static void eliminaLinieIntrePuncte(Punct p1, Punct p2)
+    {
+        Punct[] puncte = { p1, p2 };
+
+        for(int i=0;i<2;i++)
+        {
+            // Mai intai pentru p1
+            int poz = puncte[i].vecini.IndexOf(puncte[(i+1)%2].index);
+
+            // Punctele nu sunt legate
+            if (poz == -1)
+            {
+                Debug.LogError("Punctele nu erau legate");
+            }
+            else
+            {
+                // Stergere linie din scena
+                Object.Destroy(puncte[i].linii[poz]);
+
+                puncte[i].vecini.RemoveAt(poz);
+                puncte[i].linii.RemoveAt(poz);
+            }
+            
+        }
+
+    }
 }
 
 // Statistici rulare
@@ -733,11 +760,11 @@ public class PointsData
         if (!GataDeAlgoritm())
             yield break;
 
-        // Memoram timpul de start
-        float startTime = Time.realtimeSinceStartup;
-
         // Reseteaza culorile
         ResetCuloare();
+
+        // Memoram timpul de start
+        float startTime = Time.realtimeSinceStartup;
 
         // Date necesare pt algoritm
         List<List<int>> parinte = new List<List<int>>();
@@ -857,12 +884,15 @@ public class PointsData
                 int indexVecin = points[nod].vecini.FindIndex(x => x == vecin);
                 points[nod].linii[indexVecin].SetActive(true);
 
-                // Asteptam pentru 'frecventaSecunde' la numarul necesar de pasi
-                pasiFaraPauza++;
-                if (pasiPeSecunda * frecventaUpdate < pasiFaraPauza)
+                if (!benchmarkMode)
                 {
-                    pasiFaraPauza = 0;
-                    yield return new WaitForSeconds(frecventaUpdate);
+                    // Asteptam pentru 'frecventaSecunde' la numarul necesar de pasi
+                    pasiFaraPauza++;
+                    if (pasiPeSecunda * frecventaUpdate < pasiFaraPauza)
+                    {
+                        pasiFaraPauza = 0;
+                        yield return new WaitForSeconds(frecventaUpdate);
+                    }
                 }
 
                 // Construim obiectul cu datele
@@ -930,11 +960,11 @@ public class PointsData
         if (!GataDeAlgoritm())
             yield break;
 
-        // Memoram timpul de start
-        float startTime = Time.realtimeSinceStartup;
-
         // Reseteaza culorile
         ResetCuloare();
+
+        // Memoram timpul de start
+        float startTime = Time.realtimeSinceStartup;
 
         // Introducem nodul de start
         List<DateAStar> priorityQueue = new List<DateAStar>();
@@ -1011,12 +1041,15 @@ public class PointsData
                 int indexVecin = points[nodExtras.nodCurent].vecini.FindIndex(x => x == vecin);
                 points[nodExtras.nodCurent].linii[indexVecin].SetActive(true);
 
-                // Asteptam pentru 'frecventaSecunde' la numarul necesar de pasi
-                pasiFaraPauza++;
-                if (pasiPeSecunda * frecventaUpdate < pasiFaraPauza)
+                if (!benchmarkMode)
                 {
-                    pasiFaraPauza = 0;
-                    yield return new WaitForSeconds(frecventaUpdate);
+                    // Asteptam pentru 'frecventaSecunde' la numarul necesar de pasi
+                    pasiFaraPauza++;
+                    if (pasiPeSecunda * frecventaUpdate < pasiFaraPauza)
+                    {
+                        pasiFaraPauza = 0;
+                        yield return new WaitForSeconds(frecventaUpdate);
+                    }
                 }
 
                 // Inseram in lista ordonata la pozitia potrivita
@@ -1202,12 +1235,15 @@ public class PointsData
                     int indexVecin = points[nod].vecini.FindIndex(x => x == vecin);
                     points[nod].linii[indexVecin].SetActive(true);
 
-                    // Asteptam pentru 'frecventaSecunde' la numarul necesar de pasi
-                    pasiFaraPauza++;
-                    if (pasiPeSecunda * frecventaUpdate < pasiFaraPauza)
+                    if (!benchmarkMode)
                     {
-                        pasiFaraPauza = 0;
-                        yield return new WaitForSeconds(frecventaUpdate);
+                        // Asteptam pentru 'frecventaSecunde' la numarul necesar de pasi
+                        pasiFaraPauza++;
+                        if (pasiPeSecunda * frecventaUpdate < pasiFaraPauza)
+                        {
+                            pasiFaraPauza = 0;
+                            yield return new WaitForSeconds(frecventaUpdate);
+                        }
                     }
 
                     // Construim obiectul cu datele
@@ -1269,13 +1305,27 @@ public class PointsData
                 this.statistici = stats;
             }
 
-            // Generam noi noduri pentru a rafina 
-            // Luam fiecare nod din drum si pentru fiecare fata din care apartine adaugam un nod la mijloc si il legam de nodurile fetei
+            // Pastram in un dictionar fetele deja parcurse
             HashSet<Fata> feteSparte = new HashSet<Fata>();
 
-            // Pastram in un dictionar fetele deja parcurse
-            foreach(int nod in drumMinimCalculat)
+            // Drum cu modificari de rafinare
+            List<int> drumModificat = new List<int>(drumMinimCalculat);
+
+            // Generam noi noduri pentru a rafina 
+            // Luam fiecare nod din drum si pentru fiecare fata din care apartine adaugam un nod la mijloc si il legam de nodurile fetei
+            for (int i=0;i<drumMinimCalculat.Count;i++)
             {
+                // Indexul nodului curent
+                int nod = drumMinimCalculat[i];
+
+                // Memoram indexul urmatorului nod
+                int urmatorul = -1;
+                if (i != drumMinimCalculat.Count - 1)
+                {
+                    urmatorul = drumMinimCalculat[i + 1];
+                }
+
+                // Punctul curent
                 Punct p = points[nod];
 
                 // Lista noua(lista nodului se va schimba pe masura ce spargem fetele
@@ -1289,50 +1339,132 @@ public class PointsData
                         continue;
                     }
 
-                    Punct p1 = points[f.nod1];
-                    Punct p2 = points[f.nod2];
-                    Punct p3 = points[f.nod3];
+                    List<int> indecsi = new List<int>();
+                    indecsi.Add(f.nod1);
+                    indecsi.Add(f.nod2);
+                    indecsi.Add(f.nod3);
+                    indecsi.Remove(nod);
+                    // Pastram in p1 nod pentru a face mai putine verificari
+                    Punct p1 = points[nod];
+                    Punct p2 = points[indecsi[0]];
+                    Punct p3 = points[indecsi[1]];
 
-                    // Calculam coordonatele noului punct
+                    // Calculam coordonatele punctului de centru
                     Vector3 coordPunctMijloc = (p1.coordonate + p2.coordonate + p3.coordonate)/3;
 
-                    // Adaugam punctul in scena si in date
-                    Punct punctMijloc = AddPoint(coordPunctMijloc);
+                    // Calculam coordonatele mijlocului laturii p1 p2
+                    Vector3 coordM12 = (p1.coordonate + p2.coordonate) / 2;
+                    Vector3 coordM13 = (p1.coordonate + p3.coordonate) / 2;
+                    Vector3 coordM23 = (p2.coordonate + p3.coordonate) / 2;
 
-                    // Construim noile legaturi
-                    AddLineBetweenPoints(punctMijloc, p1);
-                    AddLineBetweenPoints(punctMijloc, p2);
-                    AddLineBetweenPoints(punctMijloc, p3);
+                    // Adaugam punctul de centru in scena si in date
+                    Punct punctCentru = AddPoint(coordPunctMijloc);
 
-                    // Construim cele 3 fete noi
-                    Fata f1 = new Fata(p1, p2, punctMijloc);
-                    Fata f2 = new Fata(p1, p3, punctMijloc);
-                    Fata f3 = new Fata(p2, p3, punctMijloc);
+                    // Adaugam punctele de mijloace in scena si in date, daca nu exista deja !
+                    Punct punctMijloc12 = verificareVecin(p1, coordM12);
+                    if (punctMijloc12 == null)
+                    {
+                        punctMijloc12 = AddPoint(coordM12);
+                        // Stergem liniile dintre punctele p1 p2 si construim noile linii
+                        Punct.eliminaLinieIntrePuncte(p1, p2);
+                        AddLineBetweenPoints(p1, punctMijloc12);
+                        AddLineBetweenPoints(p2, punctMijloc12);
+
+                        // Daca nodurile la care punem un nod in mijloc sunt din drum, actualizam
+                        if(p2.index == urmatorul)
+                        {
+                            int poz = drumModificat.IndexOf(nod);
+                            drumModificat.Insert(poz+1, punctMijloc12.index);
+                        }
+                    }
+
+                    Punct punctMijloc13 = verificareVecin(p1,coordM13);
+                    if (punctMijloc13 == null)
+                    {
+                        punctMijloc13 = AddPoint(coordM13);
+                        // Stergem liniile dintre punctele p1 p2 si construim noile linii
+                        Punct.eliminaLinieIntrePuncte(p1, p3);
+                        AddLineBetweenPoints(p1, punctMijloc13);
+                        AddLineBetweenPoints(p3, punctMijloc13);
+
+                        // Daca nodurile la care punem un nod in mijloc sunt din drum, actualizam
+                        if (p3.index == urmatorul)
+                        {
+                            int poz = drumModificat.IndexOf(nod);
+                            drumModificat.Insert(poz+1, punctMijloc13.index);
+                        }
+                    }
+
+                    Punct punctMijloc23 = verificareVecin(p2,coordM23);
+                    if (punctMijloc23 == null)
+                    {
+                        punctMijloc23 = AddPoint(coordM23);
+                        // Stergem liniile dintre punctele p1 p2 si construim noile linii
+                        Punct.eliminaLinieIntrePuncte(p2, p3);
+                        AddLineBetweenPoints(p2, punctMijloc23);
+                        AddLineBetweenPoints(p3, punctMijloc23);
+                    }
+
+                    // Construim legaturile dintre centru si colturile fetei
+                    AddLineBetweenPoints(punctCentru, p1);
+                    AddLineBetweenPoints(punctCentru, p2);
+                    AddLineBetweenPoints(punctCentru, p3);
+
+                    // Construim legaturile dintre centru si mijloacele fetelor
+                    AddLineBetweenPoints(punctCentru, punctMijloc12);
+                    AddLineBetweenPoints(punctCentru, punctMijloc13);
+                    AddLineBetweenPoints(punctCentru, punctMijloc23);
+
+
+                    // Construim cele 6 fete noi
+                    Fata f1 = new Fata(p1, punctMijloc12, punctCentru);
+                    Fata f2 = new Fata(p2, punctMijloc12, punctCentru);
+                    Fata f3 = new Fata(p1, punctMijloc13, punctCentru);
+                    Fata f4 = new Fata(p3, punctMijloc13, punctCentru);
+                    Fata f5 = new Fata(p2, punctMijloc23, punctCentru);
+                    Fata f6 = new Fata(p3, punctMijloc23, punctCentru);
 
                     // Marcam faptul ca fetele sunt construite in iteratia curenta
                     feteSparte.Add(f1);
                     feteSparte.Add(f2);
                     feteSparte.Add(f3);
+                    feteSparte.Add(f4);
+                    feteSparte.Add(f5);
+                    feteSparte.Add(f6);
 
                     // Marcam faptul ca punctul de mijloc apartine celor 3 fete
-                    punctMijloc.fete.Add(f1);
-                    punctMijloc.fete.Add(f2);
-                    punctMijloc.fete.Add(f3);
+                    punctCentru.fete.Add(f1);
+                    punctCentru.fete.Add(f2);
+                    punctCentru.fete.Add(f3);
+                    punctCentru.fete.Add(f4);
+                    punctCentru.fete.Add(f5);
+                    punctCentru.fete.Add(f6);
 
                     // Eliminam fata veche din nodurile p1..p3 si le adaugam noile fete
                     p1.fete.Remove(f);
                     p1.fete.Add(f1);
-                    p1.fete.Add(f2);
+                    p1.fete.Add(f3);
 
                     p2.fete.Remove(f);
-                    p2.fete.Add(f1);
-                    p2.fete.Add(f3);
+                    p2.fete.Add(f2);
+                    p2.fete.Add(f5);
 
                     p3.fete.Remove(f);
-                    p3.fete.Add(f2);
-                    p3.fete.Add(f3);
+                    p3.fete.Add(f4);
+                    p3.fete.Add(f6);
+
+                    punctMijloc12.fete.Add(f1);
+                    punctMijloc12.fete.Add(f2);
+
+                    punctMijloc13.fete.Add(f3);
+                    punctMijloc13.fete.Add(f4);
+
+                    punctMijloc23.fete.Add(f5);
+                    punctMijloc23.fete.Add(f6);
                 }
             }
+
+            drumMinimCalculat = drumModificat;
 
             // Apelam afisare linii pentru a ne genera noile linii
             GenerareLinii();
@@ -1437,6 +1569,19 @@ public class PointsData
     public Statistici GetStatistici()
     {
         return new Statistici(statistici);
+    }
+
+    public Punct verificareVecin(Punct p, Vector3 coord)
+    {
+        foreach(int vecin in p.vecini)
+        {
+            if(points[vecin].coordonate == coord)
+            {
+                return points[vecin];
+            }
+        }
+
+        return null;
     }
 }
 
@@ -1552,10 +1697,12 @@ public class AppManager : MonoBehaviour
     private PointsData data = null;
 
     [SerializeField]
-    private float delayPasAlgoritm = 0.5f;
+    private int delayPasAlgoritm = 1;
 
     // Interfata
     private UiManager uiManager;
+
+    private bool benchmarkMode = false;
 
     #endregion
 
@@ -1604,10 +1751,12 @@ public class AppManager : MonoBehaviour
         data =  new PointsData(prefabPunct, prefabLinie, startPointMaterial, endPointMaterial, uiManager);
 
         // setare delay pas algoritm
-        data.pasiPeSecunda = delayPasAlgoritm;
+        data.UpdatePasiPeSecunda(delayPasAlgoritm);
 
         // Inscriere la evenimentul de click pe punct
         data.eventPunctAles += eventPunctAles;
+
+        data.benchmarkMode = benchmarkMode;
 
         // Folosim dropdown-ul pentru a alege fisierul
         TMP_Dropdown dropdown = dropdownFisiere.GetComponent<TMP_Dropdown>();
@@ -1699,11 +1848,18 @@ public class AppManager : MonoBehaviour
 
     public void UpdatePasiPeSecunda(int pasi)
     {
+        delayPasAlgoritm = pasi;
         data?.UpdatePasiPeSecunda(pasi);
     }
 
     public void AfisareLinii()
     {
         data.AfisareLinii();
+    }
+
+    public void ToggleModBenchmark(bool toggle)
+    {
+        benchmarkMode = !toggle;
+        data.benchmarkMode = !toggle;
     }
 }
