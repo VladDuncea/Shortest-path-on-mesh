@@ -1860,6 +1860,9 @@ public class AppManager : MonoBehaviour
     public void ToggleModBenchmark(bool toggle)
     {
         benchmarkMode = !toggle;
-        data.benchmarkMode = !toggle;
+        if(data!= null)
+        {
+            data.benchmarkMode = !toggle;
+        }
     }
 }
