@@ -791,7 +791,7 @@ public class PointsData
         int nodMijloc = -1;
 
         // Distanta minima intre nodul de start si nodul scop
-        double minFoundDist = double.PositiveInfinity;
+        double distMinGasit = double.PositiveInfinity;
 
         // Variabila stocare statistici rulare
         Statistici stats = new Statistici();
@@ -802,7 +802,7 @@ public class PointsData
         while (priorityQueueStart.Count != 0 && priorityQueueEnd.Count != 0)
         {
             // Conditie oprire
-            if (minFoundDist <  priorityQueueStart[0].cost + priorityQueueEnd[0].cost)
+            if (distMinGasit <  priorityQueueStart[0].cost + priorityQueueEnd[0].cost)
             {
                 break;
             }
@@ -867,10 +867,10 @@ public class PointsData
                 }
 
                 // Verificam daca nodul a fost vizitat si din partea opusa, daca da verificam daca drumul total este mai bun decat ce avem deja
-                if(vizitat[parte%2][vecin] && costVecin + distanta[parte%2][vecin] < minFoundDist)
+                if(vizitat[parte%2][vecin] && costVecin + distanta[parte%2][vecin] < distMinGasit)
                 {
                     // Actualizam costul minim gasit
-                    minFoundDist = costVecin + distanta[parte % 2][vecin];
+                    distMinGasit = costVecin + distanta[parte % 2][vecin];
                     // Actualizam nodul in care se intalnesc
                     nodMijloc = vecin;
                 }
