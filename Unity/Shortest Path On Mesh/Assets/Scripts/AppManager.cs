@@ -14,6 +14,17 @@ public enum TipAlgoritm
     RafinareDijkstraDual
 }
 
+public class Muchie
+{
+    public int a, b;
+
+    public Muchie(int a, int b)
+    {
+        this.a = a;
+        this.b = b;
+    }
+}
+
 public class Fata
 {
     public int nod1, nod2, nod3;
@@ -30,6 +41,33 @@ public class Fata
         this.nod1 = nod1.index;
         this.nod2 = nod2.index;
         this.nod3 = nod3.index;
+    }
+
+    public Muchie MuchieOpusa(int nod)
+    {
+        if(nod1 == nod)
+        {
+            return new Muchie(nod2, nod3);
+        }
+        if (nod2 == nod)
+        {
+            return new Muchie(nod1, nod3);
+        }
+        if (nod3 == nod)
+        {
+            return new Muchie(nod1, nod2);
+        }
+        return null;
+    }
+
+    public int NodRamas(int n1, int n2)
+    {
+        List<int> toate = new List<int>() { nod1, nod2, nod3};
+        List<int> stiute = new List<int>() { n1, n2};
+
+        int ramas = toate.Except(stiute).First();
+
+        return ramas;
     }
 }
 
@@ -148,6 +186,28 @@ public class Statistici
     }
 };
 
+public class NodSecventa
+{
+    public Proiectie p;
+    public Fata f;
+    // muchia pe care se afla proiectia
+    public Muchie muchieProiectie;
+
+    public NodSecventa parinte;
+    public int adancime;
+    public Vector3 coordSursa;
+
+    public NodSecventa(Vector3 coordSursa, Proiectie p, Fata f, NodSecventa parinte, int adancime, Muchie muchieP)
+    {
+        this.coordSursa = coordSursa;
+        this.f = f;
+        this.p = p;
+        this.parinte = parinte;
+        this.adancime = adancime;
+        this.muchieProiectie = muchieP;
+    }
+}
+
 public class PointsData
 {
     private int nrPoints = 0;
@@ -185,6 +245,9 @@ public class PointsData
 
     // Frecventa update vizual(in secunde)
     float frecventaUpdate = 0.25f;
+
+    // Numarul de fete pe care il are suprafata
+    int numarFete;
 
     public PointsData(GameObject prefabPunct, GameObject prefabLinie, Material startPointMaterial, Material endPointMaterial, UiManager UI)
     {
@@ -412,6 +475,8 @@ public class PointsData
         // Ne intoarcem la inceputul fisierului
         reader.BaseStream.Position = 0;
 
+        int numarFete = 0;
+
         // Parcurgem tot fisierul si luam doar liniile pentru fete (f ...)
         while (!reader.EndOfStream)
         {
@@ -443,6 +508,9 @@ public class PointsData
             // Construim o fata cu punctele acestea
             Fata f = new Fata(punct1, punct2, punct3);
 
+            // Contorizam fetele construite
+            numarFete++;
+
             // Marcam faptul ca punctele apartin fetei
             points[punct1].fete.Add(f);
             points[punct2].fete.Add(f);
@@ -453,6 +521,8 @@ public class PointsData
             AddLineBetweenPoints(punct2, punct3);
             AddLineBetweenPoints(punct3, punct1);
         }
+
+        this.numarFete = numarFete;
 
         // Afisare linii intre puncte
         GenerareLinii();
@@ -778,12 +848,12 @@ public class PointsData
         vizitat.Add(Enumerable.Repeat(false, points.Count).ToList()); // vizitare dinspre partea de start
         vizitat.Add(Enumerable.Repeat(false, points.Count).ToList()); // vizitare dinspre partea de scop
 
-        // Introducem nodul de start
+        // Introducem nodul de start si scop
         List<DateDinamicaDual> priorityQueueStart = new List<DateDinamicaDual>();
         List<DateDinamicaDual> priorityQueueEnd = new List<DateDinamicaDual>();
         priorityQueueStart.Add(new DateDinamicaDual(startPoint, 0, 1));
         priorityQueueEnd.Add(new DateDinamicaDual(endPoint, 0, 2));
-        // Setam distanta de la nodul de start cu 0
+        // Setam distanta de la nodul de start si scop cu 0
         distanta[0][startPoint] = 0;
         distanta[1][endPoint] = 0;
 
@@ -1034,6 +1104,8 @@ public class PointsData
                 // Calculam aproximarea
                 dateVecin.aproximat = aproximare(points[vecin].coordonate, points[endPoint].coordonate);
 
+                //TODO Verificare cost mai bun !!!!!!!
+
                 // Setam parintele nodului
                 dateVecin.parinte = nodExtras;
 
@@ -1103,16 +1175,19 @@ public class PointsData
         if (!GataDeAlgoritm())
             yield break;
 
+        // Reseteaza culorile
+        ResetCuloare();
+
         // Memoram timpul de start
         float startTime = Time.realtimeSinceStartup;
 
         // Numarul de iteratii de repetare
-        int iteratii = 5;
+        int iteratii = 2;
 
-        // Reseteaza culorile
-        ResetCuloare();
+        // Variabila stocare statistici rulare
+        Statistici stats = new Statistici();
 
-        while(iteratii > 0)
+        while (iteratii > 0)
         {
             // Facem un pas
             iteratii--;
@@ -1143,9 +1218,6 @@ public class PointsData
 
             // Distanta minima intre nodul de start si nodul scop
             double minFoundDist = double.PositiveInfinity;
-
-            // Variabila stocare statistici rulare
-            Statistici stats = new Statistici();
 
             int pasiFaraPauza = 0;
 
@@ -1298,9 +1370,6 @@ public class PointsData
                 stats.drum = drum;
                 stats.distanta = distanta[0][nodMijloc] + distanta[1][nodMijloc];
 
-                // Calculare timp rulare
-                stats.durataRulare = Time.realtimeSinceStartup - startTime;
-
                 // Memoram statisticile global
                 this.statistici = stats;
             }
@@ -1361,7 +1430,7 @@ public class PointsData
                     Punct punctCentru = AddPoint(coordPunctMijloc);
 
                     // Adaugam punctele de mijloace in scena si in date, daca nu exista deja !
-                    Punct punctMijloc12 = verificareVecin(p1, coordM12);
+                    Punct punctMijloc12 = VerificareVecin(p1, coordM12);
                     if (punctMijloc12 == null)
                     {
                         punctMijloc12 = AddPoint(coordM12);
@@ -1378,7 +1447,7 @@ public class PointsData
                         }
                     }
 
-                    Punct punctMijloc13 = verificareVecin(p1,coordM13);
+                    Punct punctMijloc13 = VerificareVecin(p1,coordM13);
                     if (punctMijloc13 == null)
                     {
                         punctMijloc13 = AddPoint(coordM13);
@@ -1395,7 +1464,7 @@ public class PointsData
                         }
                     }
 
-                    Punct punctMijloc23 = verificareVecin(p2,coordM23);
+                    Punct punctMijloc23 = VerificareVecin(p2,coordM23);
                     if (punctMijloc23 == null)
                     {
                         punctMijloc23 = AddPoint(coordM23);
@@ -1423,6 +1492,9 @@ public class PointsData
                     Fata f4 = new Fata(p3, punctMijloc13, punctCentru);
                     Fata f5 = new Fata(p2, punctMijloc23, punctCentru);
                     Fata f6 = new Fata(p3, punctMijloc23, punctCentru);
+
+                    // Contorizam fetele noi (6 noi, una scoasa)
+                    this.numarFete += 5;
 
                     // Marcam faptul ca fetele sunt construite in iteratia curenta
                     feteSparte.Add(f1);
@@ -1466,26 +1538,178 @@ public class PointsData
 
             drumMinimCalculat = drumModificat;
 
-            // Apelam afisare linii pentru a ne genera noile linii
+            // Apelam generare linii pentru a ne genera noile linii
             GenerareLinii();
 
-            // Afisam drumul
-            AfisareDrum(doarCuloare: true);
+            if (!benchmarkMode)
+            {
+                // Afisam drumul
+                AfisareDrum(doarCuloare: true);
 
-            // Pauza 2 sec pentru a putea vedea
-            yield return new WaitForSeconds(2);
+                // Pauza 2 sec pentru a putea vedea
+                yield return new WaitForSeconds(2);
 
-            // Ascundem liniile
-            AscundeLiniile();
+                // Ascundem liniile
+                AscundeLiniile();
 
-            // Reset culori
-            ResetCuloare();
+                // Reset culori
+                ResetCuloare();
+            } 
         }
+
+        // Calculare timp rulare
+        stats.durataRulare = Time.realtimeSinceStartup - startTime;
 
         // Afisam drumul
         AfisareDrum();
 
         callback?.Invoke();
+    }
+
+    public IEnumerator AplicaDesfacerePlan2D(System.Action callback)
+    {
+        if (!GataDeAlgoritm())
+            yield break;
+
+        // Reseteaza culorile
+        ResetCuloare();
+
+        // Memoram timpul de start
+        float startTime = Time.realtimeSinceStartup;
+
+        // Variabila stocare statistici rulare
+        Statistici stats = new Statistici();
+
+        // Lista cu nodurile care vor fi expandate( folosita ca o coada)
+        List<NodSecventa> coada = new List<NodSecventa>();
+
+        // Coordonatele nodului de start
+        Vector3 coordStart = points[startPoint].coordonate;
+
+        //Nodul radacina
+        NodSecventa radacina = new NodSecventa(coordStart, null, null, null, 0, null);
+
+        // Pentru fiecare fata a nodului de start, adaugam latura opusa si fata adiacenta in coada
+        foreach (Fata f in points[startPoint].fete)
+        {
+            // Contorizam
+            stats.numarNoduri++;
+
+            // Luam cele doua puncte care formeaza muchia opusa
+            Muchie muchie = f.MuchieOpusa(startPoint);
+
+            // Pe post de proiectie o sa avem intreaga muchie opusa punctului
+            Proiectie p = new Proiectie(points[muchie.a].coordonate, points[muchie.b].coordonate);
+
+            // Cautam fata opusa muchiei
+            Fata fataVecina = FataVecina(f,muchie.a, muchie.b);
+
+            coada.Add(new NodSecventa(coordStart, p, fataVecina,radacina,1,muchie));
+        }
+
+        
+        Vector3 coordScop = points[endPoint].coordonate;
+        Vector3 coordonateFinale = new Vector3();
+        bool gasit = false;
+
+        while (coada.Count != 0)
+        {
+
+            stats.numarNoduri++;
+
+            // Luam primul nod din coada
+            NodSecventa nod = coada[0];
+            // Il stergem din coada
+            coada.RemoveAt(0);
+
+            // Daca am depasit numarul de noduri am terminat
+            if (nod.adancime > numarFete)
+                continue;
+
+
+            // Punct ramas
+            int punctOpus = nod.f.NodRamas(nod.muchieProiectie.a, nod.muchieProiectie.b);
+
+            // Construim muchiile
+            Muchie m1 = new Muchie(nod.muchieProiectie.a, punctOpus);
+            Muchie m2 = new Muchie(nod.muchieProiectie.b, punctOpus);
+
+            // Calculam unghiul cu care trebuie sa rotim pentru a aduce punctul sursa in acelasi plan cu fata
+            float unghi = Utils.UnghiIntrePunctSiPlan(nod.coordSursa, points[nod.muchieProiectie.a].coordonate, points[nod.muchieProiectie.b].coordonate, points[punctOpus].coordonate);
+
+            // Luam coordonatele rotite pentru a aduce in acelasi plan 2D
+            Vector3 coordRotite = Utils.RotesteDupaLinie(nod.coordSursa, points[nod.muchieProiectie.a].coordonate, points[nod.muchieProiectie.b].coordonate, -unghi);
+
+            // Calculam proiectia pe cele doua muchii
+            System.Tuple<Proiectie,Proiectie> proiectii = Utils.Proiectia(coordRotite, nod.p, points[nod.muchieProiectie.a].coordonate, points[punctOpus].coordonate, points[nod.muchieProiectie.b].coordonate);
+
+            if (proiectii == null)
+            {
+                Debug.Log("Nu avem intersectii");
+                continue;
+            }
+
+            Proiectie proiectie1 = proiectii.Item1;
+            Proiectie proiectie2 = proiectii.Item2;
+
+            if (proiectie1 != null)
+            {
+                // Verificam daca a gasit punctul scop
+                if (proiectie1.p1 == coordScop || proiectie1.p2 == coordScop)
+                {
+                    Debug.Log("Am gasit punctul scop!!!");
+                    gasit = true;
+                    coordonateFinale = coordRotite;
+                    break;
+                }
+
+                // Cautam fetele vecine pentru fecare din muchii
+                Fata fataVecina = FataVecina(nod.f, m1.a, m1.b);
+
+                // Daca nu exista fata vecina ne oprim
+                if(fataVecina != null)
+                {
+                    coada.Add(new NodSecventa(coordRotite, proiectie1, fataVecina, radacina, nod.adancime + 1, m1));
+                }
+            }
+
+            if (proiectie2 != null)
+            {
+                // Verificam daca a gasit punctul scop
+                if (proiectie2.p1 == coordScop || proiectie2.p2 == coordScop)
+                {
+                    Debug.Log("Am gasit punctul scop!!!");
+                    gasit = true;
+                    coordonateFinale = coordRotite;
+                    break;
+                }
+
+                // Cautam fetele vecine pentru fecare din muchii
+                Fata fataVecina2 = FataVecina(nod.f, m2.a, m2.b);
+
+                coada.Add(new NodSecventa(coordRotite, proiectie2, fataVecina2, radacina, nod.adancime + 1, m2));
+            }
+        }
+
+        if(gasit == true)
+        {
+            Debug.Log(coordonateFinale);
+            // Calculam distanta de la nodul start in pozitia finala pana la punctul scop
+            stats.distanta = Vector3.Distance(coordScop, coordonateFinale);
+        }
+
+        // Calculare timp rulare
+        stats.durataRulare = Time.realtimeSinceStartup - startTime;
+
+        // Salvam statisticile global
+        this.statistici = stats;
+        
+
+        // Afisam drumul
+        AfisareDrum();
+
+        callback?.Invoke();
+
     }
 
     public void AfisareDrum(List<int> drum = null, bool doarCuloare = false)
@@ -1571,7 +1795,7 @@ public class PointsData
         return new Statistici(statistici);
     }
 
-    public Punct verificareVecin(Punct p, Vector3 coord)
+    private Punct VerificareVecin(Punct p, Vector3 coord)
     {
         foreach(int vecin in p.vecini)
         {
@@ -1582,6 +1806,27 @@ public class PointsData
         }
 
         return null;
+    }
+
+    private Fata FataVecina(Fata f, int p1, int p2)
+    {
+        // Luam fetele comune lui p1 si p2 si o intoarcem pe cea diferita de f
+        List<Fata> feteComune = points[p1].fete.Intersect(points[p2].fete).ToList();
+
+        if(feteComune.Count > 2 || feteComune.Count == 0)
+        {
+            Debug.LogError("Ar trebui sa fie 1/2 fete!!");
+        }
+
+        // Daca e doar o fata
+        if(feteComune.Count == 1)
+        {
+            return null;
+        }
+
+        if (feteComune[0] == f)
+            return feteComune[1];
+        return feteComune[0];
     }
 }
 
@@ -1711,6 +1956,11 @@ public class AppManager : MonoBehaviour
         uiManager = FindObjectOfType<UiManager>();
         // Populeaza cu date dropdown fisiere
         PopulareDropdown();
+
+        Debug.Log( Utils.RotesteDupaLinie(new Vector3(0, 0, 0), new Vector3(0, 4, 0), new Vector3(0, 4, 2), 1.6f));
+        float unghi = Utils.UnghiIntrePunctSiPlan(new Vector3(0, 0, 2), new Vector3(-3, 0, 0), new Vector3(0, 3, 0), new Vector3(-4, -4, 0));
+        Debug.Log(unghi);
+        Debug.Log( Utils.RotesteDupaLinie(new Vector3(0, 0, 2), new Vector3(-3, 0, 0), new Vector3(0, 3, 0), unghi));
     }
 
     // Update is called once per frame
@@ -1808,6 +2058,10 @@ public class AppManager : MonoBehaviour
         else if (uiManager.AlgoritmAles() == TipAlgoritm.Astar)
         {
             StartCoroutine(data.AplicaAStar(FinalCorutina,Vector3.Distance));
+        }
+        else if (uiManager.AlgoritmAles() == TipAlgoritm.RafinareDijkstraDual)
+        {
+            StartCoroutine(data.AplicaDesfacerePlan2D(FinalCorutina));
         }
         else if (uiManager.AlgoritmAles() == TipAlgoritm.RafinareDijkstraDual)
         {
