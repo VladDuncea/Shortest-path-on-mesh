@@ -27,9 +27,6 @@ public class Utils : MonoBehaviour
     // Fie o semidreapta A definita de punctele x1,x2 cu capatul finit in x1 si o dreapta B definita de punctele x3,x4.
     // Vrem sa gasim intersectia semidreptei A (finita la punctul x1) cu dreapta B.
     // In cazul in care intersectia nu are loc vom intoarce null
-    // Daca avem intersectie:
-    //      Daca intersectia se afla pe segmentul (x3,x4) vom intoarce punctul de intersectie
-    //      Daca intersectia se afla in afara segmentului vom intoarce cel mai apropiat punct dintre x3,x4
     public static Vector3? IntersectiaDreptelorModif(Vector3 x1, Vector3 x2, Vector3 x3, Vector3 x4)
     {
         Vector3 a, b, c;

@@ -1604,6 +1604,8 @@ public class PointsData
             // Cautam fata opusa muchiei
             Fata fataVecina = FataVecina(f,muchie.a, muchie.b);
 
+            // TODO: verificare nod scop găsit, caz trivial cand sunt pe aceasi fata
+
             coada.Add(new NodSecventa(coordStart, p, fataVecina,radacina,1,muchie));
         }
 
