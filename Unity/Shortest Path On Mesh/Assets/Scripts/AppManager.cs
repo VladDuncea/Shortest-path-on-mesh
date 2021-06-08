@@ -11,7 +11,8 @@ public enum TipAlgoritm
     Dijkstra,
     DijkstraDual,
     Astar,
-    RafinareDijkstraDual
+    RafinareDijkstraDual,
+    DesfacerePlanComun
 }
 
 public class Muchie
@@ -1043,6 +1044,9 @@ public class PointsData
         // Lista cu nodurile vizitate pentru a le ignora ulterior
         List<bool> noduriVizitate = Enumerable.Repeat(false, points.Count).ToList();
 
+        // Lista cu cele mai bune distante pentru fiecare nod in parte
+        List<double> distanta = Enumerable.Repeat(double.PositiveInfinity, points.Count).ToList();
+
         // Nodul de final
         DateAStar final = null;
 
@@ -1105,6 +1109,14 @@ public class PointsData
                 dateVecin.aproximat = aproximare(points[vecin].coordonate, points[endPoint].coordonate);
 
                 //TODO Verificare cost mai bun !!!!!!!
+                // Verificam daca costul e mai bun decat ceva ce am gasit deja
+                if (dateVecin.cost >= distanta[vecin])
+                {
+                    // Ignoram
+                    continue;
+                }
+
+                distanta[vecin] = dateVecin.cost;
 
                 // Setam parintele nodului
                 dateVecin.parinte = nodExtras;
@@ -2063,11 +2075,11 @@ public class AppManager : MonoBehaviour
         }
         else if (uiManager.AlgoritmAles() == TipAlgoritm.RafinareDijkstraDual)
         {
-            StartCoroutine(data.AplicaDesfacerePlan2D(FinalCorutina));
-        }
-        else if (uiManager.AlgoritmAles() == TipAlgoritm.RafinareDijkstraDual)
-        {
             StartCoroutine(data.AplicaDijkstraDualCuRafinare(FinalCorutina));
+        }
+        else if (uiManager.AlgoritmAles() == TipAlgoritm.DesfacerePlanComun)
+        {
+            StartCoroutine(data.AplicaDesfacerePlan2D(FinalCorutina));
         }
     }
 

@@ -217,7 +217,6 @@ public class Utils : MonoBehaviour
     // p1,p2 sunt muchia dupa care masuram unghiul!
     public static float UnghiIntrePunctSiPlan(Vector3 punct, Vector3 p1, Vector3 p2, Vector3 p3)
     {
-        // Calculam proiectia punctului pe dreapta p1,p2
 
         Vector3 directie = (p2 - p1) / Vector3.Distance(p1, p2);
         Vector3 vect = punct - p1;
