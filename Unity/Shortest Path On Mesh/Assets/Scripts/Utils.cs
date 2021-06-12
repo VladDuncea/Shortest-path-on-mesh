@@ -22,6 +22,9 @@ public class Proiectie
 
 public class Utils : MonoBehaviour
 {
+    // Marja de eroare acceptata
+    static float marjaEroare = 0.00001f;
+
 
     // Functie care face intersectia dreptelor cu mai multe modificari
     // Fie o semidreapta A definita de punctele x1,x2 cu capatul finit in x1 si o dreapta B definita de punctele x3,x4.
@@ -40,7 +43,7 @@ public class Utils : MonoBehaviour
         if (!Coplanare(x1,x2,x3,x4))
         {
             // Dreptele nu sunt coplanare!
-            Debug.Log("Dreptele nu sunt coplanare!");
+            Debug.LogError("Dreptele nu sunt coplanare!");
             return null;
         }
 
@@ -52,6 +55,7 @@ public class Utils : MonoBehaviour
         // Verificare intersectie in afara semidreptei A
         if (s<0)
         {
+            Debug.LogError("Nu trebuia sa fie intersectia in afara!");
             return null;
         }
 
@@ -74,7 +78,9 @@ public class Utils : MonoBehaviour
         // Verificare coplanaritate
         float copl = Vector3.Dot(c, Vector3.Cross(a, b));
 
-        return copl == 0;
+        //Debug.Log(copl);
+
+        return Mathf.Abs(copl) < marjaEroare;
     }
 
     // S este punctul start, p este proiectia initiala, l2 este punctul varful opus laturii pe care se afla proiectia
@@ -107,54 +113,77 @@ public class Utils : MonoBehaviour
         // Verificam daca am avut intersectie in ambele parti, daca da putem deduce celelalte 2 intersectii
         if(intersectiaDreapta != null && intersectiaStanga != null)
         {
-            return new Tuple<Proiectie, Proiectie>(new Proiectie((Vector3)intersectiaDreapta, l2), 
-                new Proiectie((Vector3)intersectiaStanga, l2));
+            return new Tuple<Proiectie, Proiectie>(new Proiectie((Vector3)intersectiaStanga, l2), 
+                new Proiectie((Vector3)intersectiaDreapta, l2));
         }
-            
 
-        // Transformam la simplu vector3
-        Vector3 i1 = (Vector3)intersectiaStanga, i2 = (Vector3)intersectiaDreapta;
-        Vector3 a = l2 - l1;
-
-        // Verificam daca intersectia este complet in interiorul segmeuntului l1,l2 sau daca trebuie sa taiam
-        float pozReli1 = Vector3.Magnitude(i1-l1)*Mathf.Sign(Vector3.Dot(i1 - l1, a))/Vector3.Magnitude(a);
-        float pozReli2 = Vector3.Magnitude(i2-l1)*Mathf.Sign(Vector3.Dot(i2 - l1, a))/Vector3.Magnitude(a);
-
-        // Cazul in care ambele puncte sunt in afara segmentului l1,l2, ignoram
-        if ((pozReli1 < 0 && pozReli2 < 0) || (pozReli1 > 1 && pozReli2 > 1))
+        if (intersectiaStanga != null)
         {
-            return null;
+            // Doar dreapta a avut intersectie, cautam capatul celalalt
+            Vector3? intersectiaStanga2 = IntersectiaDreptelorModif(S, p1, l2, l3);
+            if (intersectiaStanga2 == null)
+            {
+                Debug.LogError("Nu trebuia sa se intample asta!!");
+            }
+
+            return new Tuple<Proiectie, Proiectie>(new Proiectie((Vector3)intersectiaStanga, (Vector3)intersectiaStanga2), null);
         }
 
-        // Cazul in care ambele puncte sunt in interior, pastram asa cum sunt
-        if((pozReli1 >= 0 && pozReli2 >= 0) && (pozReli1 <= 1 && pozReli2 <= 1))
+        if (intersectiaDreapta != null)
         {
-            //return new Proiectie(i1, i2);
+            // Doar dreapta a avut intersectie, cautam capatul celalalt
+            Vector3? intersectiaDreapta2 = IntersectiaDreptelorModif(S, p2, l1, l2);
+            if(intersectiaDreapta2 == null)
+            {
+                Debug.LogError("Nu trebuia sa se intample asta!!");
+            }
+
+            return new Tuple<Proiectie, Proiectie>(null,new Proiectie((Vector3)intersectiaDreapta, (Vector3)intersectiaDreapta2));
         }
 
-        // Verificam daca trebuie sa limitam unele din puncte
+        //// Transformam la simplu vector3
+        //Vector3 i1 = (Vector3)intersectiaStanga, i2 = (Vector3)intersectiaDreapta;
+        //Vector3 a = l2 - l1;
+
+        //// Verificam daca intersectia este complet in interiorul segmeuntului l1,l2 sau daca trebuie sa taiam
+        //float pozReli1 = Vector3.Magnitude(i1-l1)*Mathf.Sign(Vector3.Dot(i1 - l1, a))/Vector3.Magnitude(a);
+        //float pozReli2 = Vector3.Magnitude(i2-l1)*Mathf.Sign(Vector3.Dot(i2 - l1, a))/Vector3.Magnitude(a);
+
+        //// Cazul in care ambele puncte sunt in afara segmentului l1,l2, ignoram
+        //if ((pozReli1 < 0 && pozReli2 < 0) || (pozReli1 > 1 && pozReli2 > 1))
+        //{
+        //    return null;
+        //}
+
+        //// Cazul in care ambele puncte sunt in interior, pastram asa cum sunt
+        //if((pozReli1 >= 0 && pozReli2 >= 0) && (pozReli1 <= 1 && pozReli2 <= 1))
+        //{
+        //    //return new Proiectie(i1, i2);
+        //}
+
+        //// Verificam daca trebuie sa limitam unele din puncte
         
-        if(pozReli1 < 0)
-        {
-            // i1 e mai aproape de l1
-            i1 = l1;
-        }
-        else if (pozReli1 > 1)
-        {
-            // i1 e mai aproape de l2
-            i1 = l2;
-        }
+        //if(pozReli1 < 0)
+        //{
+        //    // i1 e mai aproape de l1
+        //    i1 = l1;
+        //}
+        //else if (pozReli1 > 1)
+        //{
+        //    // i1 e mai aproape de l2
+        //    i1 = l2;
+        //}
 
-        if (pozReli2 < 0)
-        {
-            // i1 e mai aproape de l1
-            i2 = l1;
-        }
-        else if (pozReli2 > 1)
-        {
-            // i1 e mai aproape de l2
-            i2 = l2;
-        }
+        //if (pozReli2 < 0)
+        //{
+        //    // i1 e mai aproape de l1
+        //    i2 = l1;
+        //}
+        //else if (pozReli2 > 1)
+        //{
+        //    // i1 e mai aproape de l2
+        //    i2 = l2;
+        //}
 
         return null;
     }
@@ -217,6 +246,11 @@ public class Utils : MonoBehaviour
     // p1,p2 sunt muchia dupa care masuram unghiul!
     public static float UnghiIntrePunctSiPlan(Vector3 punct, Vector3 p1, Vector3 p2, Vector3 p3)
     {
+        // Verifică mai întai coplanaritatea
+        if(Coplanare(punct, p1, p2, p3))
+        {
+            return 0;
+        }
 
         Vector3 directie = (p2 - p1) / Vector3.Distance(p1, p2);
         Vector3 vect = punct - p1;
@@ -225,18 +259,17 @@ public class Utils : MonoBehaviour
         // Punctul de proiectie
         Vector3 punctProiectie = p1 + t * directie;
 
-        Debug.Log(punctProiectie);
+        //Debug.Log("Punct proiectie:");
+        //Debug.Log(punctProiectie.x+" " +punctProiectie.y+" "+ punctProiectie.z);
 
         // Calculam norma planului
-        Vector3 normaPlan = Vector3.Cross(p2-p1,p3-p1);
+        Vector3 normaPlan = Vector3.Cross(p2-p1,p3-p1).normalized;
 
         // Vectorul format de punct si proiectie
         Vector3 vectorPePlan = punct - punctProiectie;
 
         // Calculam unghiul dintre norma si vectorul construit de punctul nostru si punctul de proiectie
-        float unghi = Mathf.Acos(Vector3.Dot(vectorPePlan, normaPlan)/ (vectorPePlan.magnitude * normaPlan.magnitude));
-
-        Debug.Log(unghi-Mathf.PI/2);
+        float unghi = Mathf.Acos(Vector3.Dot(vectorPePlan.normalized, normaPlan));
 
         // Scadem 90 de grade pt ca norma face 90 de grade pe plan
         return unghi - Mathf.PI / 2;

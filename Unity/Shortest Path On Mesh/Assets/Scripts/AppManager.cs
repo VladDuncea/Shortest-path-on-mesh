@@ -1108,7 +1108,6 @@ public class PointsData
                 // Calculam aproximarea
                 dateVecin.aproximat = aproximare(points[vecin].coordonate, points[endPoint].coordonate);
 
-                //TODO Verificare cost mai bun !!!!!!!
                 // Verificam daca costul e mai bun decat ceva ce am gasit deja
                 if (dateVecin.cost >= distanta[vecin])
                 {
@@ -1694,7 +1693,7 @@ public class PointsData
                 {
                     Debug.Log("Am gasit punctul scop!!!");
                     gasit = true;
-                    coordonateFinale = coordRotite;
+                    coordonateFinale = coordRotite; 
                     break;
                 }
 
@@ -1971,10 +1970,10 @@ public class AppManager : MonoBehaviour
         // Populeaza cu date dropdown fisiere
         PopulareDropdown();
 
-        Debug.Log( Utils.RotesteDupaLinie(new Vector3(0, 0, 0), new Vector3(0, 4, 0), new Vector3(0, 4, 2), 1.6f));
-        float unghi = Utils.UnghiIntrePunctSiPlan(new Vector3(0, 0, 2), new Vector3(-3, 0, 0), new Vector3(0, 3, 0), new Vector3(-4, -4, 0));
-        Debug.Log(unghi);
-        Debug.Log( Utils.RotesteDupaLinie(new Vector3(0, 0, 2), new Vector3(-3, 0, 0), new Vector3(0, 3, 0), unghi));
+        //Debug.Log( Utils.RotesteDupaLinie(new Vector3(0, 0, 0), new Vector3(0, 4, 0), new Vector3(0, 4, 2), 1.6f));
+        //float unghi = Utils.UnghiIntrePunctSiPlan(new Vector3(0, 0, 2), new Vector3(-3, 0, 0), new Vector3(0, 3, 0), new Vector3(-4, -4, 0));
+        //Debug.Log(unghi);
+        //Debug.Log( Utils.RotesteDupaLinie(new Vector3(0, 0, 2), new Vector3(-3, 0, 0), new Vector3(0, 3, 0), unghi));
     }
 
     // Update is called once per frame
