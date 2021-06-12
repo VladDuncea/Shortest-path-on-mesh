@@ -9324,7 +9324,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 0, y: 35}
-  m_SizeDelta: {x: 200, y: 35}
+  m_SizeDelta: {x: 250, y: 35}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &2143754255
 MonoBehaviour:
@@ -9385,7 +9385,9 @@ MonoBehaviour:
       m_Image: {fileID: 0}
     - m_Text: Rafinare DijkstraDual
       m_Image: {fileID: 0}
-    - m_Text: Desfacere Plan Comun
+    - m_Text: Desfacere Plan
+      m_Image: {fileID: 0}
+    - m_Text: Desfacere Plan Informat
       m_Image: {fileID: 0}
   m_OnValueChanged:
     m_PersistentCalls:

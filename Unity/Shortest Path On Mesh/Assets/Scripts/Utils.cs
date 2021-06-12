@@ -59,6 +59,11 @@ public class Utils : MonoBehaviour
             return null;
         }
 
+        // Vrem intersectie pe segmentul x3,x4
+        float t = Vector3.Dot(Vector3.Cross(c, a), Vector3.Cross(a, b)) / numitor;
+        if (t < 0 || t > 1)
+            return null;
+
         Vector3 intersectie = x1 + a * s;  
 
 
@@ -99,46 +104,38 @@ public class Utils : MonoBehaviour
         }
 
         // Calculam proiectia lui S prin segmentul p1,p2 pe dreapta formata de l1,l2
-        Vector3? intersectiaStanga = IntersectiaDreptelorModif(S, p1, l1, l2);
-        Vector3? intersectiaDreapta = IntersectiaDreptelorModif(S, p2, l2, l3);
+        Vector3? intersectiaStanga1 = IntersectiaDreptelorModif(S, p1, l1, l2);
+        Vector3? intersectiaStanga2 = IntersectiaDreptelorModif(S, p2, l1, l2);
+        Vector3? intersectiaDreapta1 = IntersectiaDreptelorModif(S, p2, l2, l3);
+        Vector3? intersectiaDreapta2 = IntersectiaDreptelorModif(S, p1, l2, l3);
 
 
         // Nu avem intersectii 
-        if (intersectiaStanga == null || intersectiaDreapta == null)
+        if (intersectiaStanga1 == null && intersectiaDreapta1 == null && intersectiaStanga2 == null && intersectiaDreapta2==null)
         {
             Debug.LogError("Intotdeauna trebuie sa fie intersectii");
             return null;
         }
 
         // Verificam daca am avut intersectie in ambele parti, daca da putem deduce celelalte 2 intersectii
-        if(intersectiaDreapta != null && intersectiaStanga != null)
+        if(intersectiaDreapta1 != null && intersectiaStanga1 != null && intersectiaStanga2 == null && intersectiaDreapta2 == null)
         {
-            return new Tuple<Proiectie, Proiectie>(new Proiectie((Vector3)intersectiaStanga, l2), 
-                new Proiectie((Vector3)intersectiaDreapta, l2));
+            return new Tuple<Proiectie, Proiectie>(new Proiectie((Vector3)intersectiaStanga1, l2), 
+                new Proiectie((Vector3)intersectiaDreapta1, l2));
         }
 
-        if (intersectiaStanga != null)
+        if (intersectiaStanga1 != null && intersectiaStanga2 != null)
         {
-            // Doar dreapta a avut intersectie, cautam capatul celalalt
-            Vector3? intersectiaStanga2 = IntersectiaDreptelorModif(S, p1, l2, l3);
-            if (intersectiaStanga2 == null)
-            {
-                Debug.LogError("Nu trebuia sa se intample asta!!");
-            }
+            // Doar stanga a avut intersectie
 
-            return new Tuple<Proiectie, Proiectie>(new Proiectie((Vector3)intersectiaStanga, (Vector3)intersectiaStanga2), null);
+            return new Tuple<Proiectie, Proiectie>(new Proiectie((Vector3)intersectiaStanga1, (Vector3)intersectiaStanga2), null);
         }
 
-        if (intersectiaDreapta != null)
+        if (intersectiaDreapta1 != null && intersectiaDreapta2 != null)
         {
-            // Doar dreapta a avut intersectie, cautam capatul celalalt
-            Vector3? intersectiaDreapta2 = IntersectiaDreptelorModif(S, p2, l1, l2);
-            if(intersectiaDreapta2 == null)
-            {
-                Debug.LogError("Nu trebuia sa se intample asta!!");
-            }
+            // Doar dreapta a avut intersectie
 
-            return new Tuple<Proiectie, Proiectie>(null,new Proiectie((Vector3)intersectiaDreapta, (Vector3)intersectiaDreapta2));
+            return new Tuple<Proiectie, Proiectie>(null,new Proiectie((Vector3)intersectiaDreapta1, (Vector3)intersectiaDreapta2));
         }
 
         //// Transformam la simplu vector3
@@ -273,6 +270,11 @@ public class Utils : MonoBehaviour
 
         // Scadem 90 de grade pt ca norma face 90 de grade pe plan
         return unghi - Mathf.PI / 2;
+    }
+
+    public static bool ComparaCuEroare(Vector3 p1, Vector3 p2)
+    {
+        return Vector3.Distance(p1, p2) < marjaEroare;
     }
 
 }

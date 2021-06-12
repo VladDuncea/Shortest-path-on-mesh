@@ -114,6 +114,8 @@ public class UiManager : MonoBehaviour
                 return TipAlgoritm.RafinareDijkstraDual;
             case 5:
                 return TipAlgoritm.DesfacerePlanComun;
+            case 6:
+                return TipAlgoritm.DesfacerePlanComunInformat;
         }
 
         // In caz de eroare intoarce backtracking
