@@ -23,7 +23,7 @@ public class Proiectie
 public class Utils : MonoBehaviour
 {
     // Marja de eroare acceptata
-    static float marjaEroare = 0.00001f;
+    static float marjaEroare = 0.0001f;
 
 
     // Functie care face intersectia dreptelor cu mai multe modificari
@@ -53,15 +53,15 @@ public class Utils : MonoBehaviour
         float s = numarator / numitor;
 
         // Verificare intersectie in afara semidreptei A
-        if (s<0)
+        if (s<-marjaEroare)
         {
-            Debug.LogError("Nu trebuia sa fie intersectia in afara!");
+            //Debug.LogError("Nu trebuia sa fie intersectia in afara!");
             return null;
         }
 
         // Vrem intersectie pe segmentul x3,x4
         float t = Vector3.Dot(Vector3.Cross(c, a), Vector3.Cross(a, b)) / numitor;
-        if (t < 0 || t > 1)
+        if (t < -marjaEroare || t > 1+marjaEroare)
             return null;
 
         Vector3 intersectie = x1 + a * s;  
@@ -244,10 +244,10 @@ public class Utils : MonoBehaviour
     public static float UnghiIntrePunctSiPlan(Vector3 punct, Vector3 p1, Vector3 p2, Vector3 p3)
     {
         // Verifică mai întai coplanaritatea
-        if(Coplanare(punct, p1, p2, p3))
-        {
-            return 0;
-        }
+        //if(Coplanare(punct, p1, p2, p3))
+        //{
+        //    return 0;
+        //}
 
         Vector3 directie = (p2 - p1) / Vector3.Distance(p1, p2);
         Vector3 vect = punct - p1;
@@ -274,7 +274,7 @@ public class Utils : MonoBehaviour
 
     public static bool ComparaCuEroare(Vector3 p1, Vector3 p2)
     {
-        return Vector3.Distance(p1, p2) < marjaEroare;
+        return Vector3.Distance(p1, p2) < 3*marjaEroare;
     }
 
 }

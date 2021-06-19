@@ -1809,14 +1809,17 @@ public class PointsData
 
             // Lista cu fostii indexuri
             List<int> indexVechi = new List<int>();
- 
+
+            List<int> lIndex = new List<int>() { listaFete[0].nod1, listaFete[0].nod2, listaFete[0].nod3 };
+            lIndex.Remove(startPoint);
+
             // Adaugam cele 3 puncte ale fetei initiale
-            puncteDeRotit.Add(points[listaFete[0].nod1].coordonate);
-            puncteDeRotit.Add(points[listaFete[0].nod2].coordonate);
-            puncteDeRotit.Add(points[listaFete[0].nod3].coordonate);
-            indexVechi.Add(listaFete[0].nod1);
-            indexVechi.Add(listaFete[0].nod2);
-            indexVechi.Add(listaFete[0].nod3);
+            puncteDeRotit.Add(points[startPoint].coordonate);
+            puncteDeRotit.Add(points[lIndex[0]].coordonate);
+            puncteDeRotit.Add(points[lIndex[1]].coordonate);
+            indexVechi.Add(startPoint);
+            indexVechi.Add(lIndex[0]);
+            indexVechi.Add(lIndex[1]);
 
 
             for (int i = 1; i < listaFete.Count(); i++)
