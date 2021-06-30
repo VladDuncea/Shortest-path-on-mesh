@@ -88,7 +88,8 @@ public class UiManager : MonoBehaviour
 
     public void ClickMeniu()
     {
-        SceneManager.LoadScene("Meniu");
+        //SceneManager.LoadScene("Meniu");
+        Application.Quit();
     }
 
     public void ClickInapoi()

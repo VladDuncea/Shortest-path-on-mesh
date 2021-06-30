@@ -233,6 +233,9 @@ public class PointsData
     // Datele pentru desfacereaPlan
     PointsData desfacerePlan = null;
 
+    // Liniile afisate pentru proiectie
+    List<GameObject> liniiProiectie = null;
+
     public PointsData(GameObject prefabPunct, GameObject prefabLinie, Material startPointMaterial, Material endPointMaterial, UiManager UI)
     {
         points = new List<Punct>();
@@ -248,6 +251,9 @@ public class PointsData
         culoareDefaultLinie = prefabLinie.GetComponent<LineRenderer>().startColor;
 
         this.UI = UI;
+
+        // Subscriem punctul la scalare
+        UI.scalarePunct += ScalareLiniiProiectie;
     }
 
     private Punct AddPoint(Vector3 punct)
@@ -361,6 +367,18 @@ public class PointsData
         {
             desfacerePlan.EliminaElementeDesenate();
         }
+
+        if(liniiProiectie != null)
+        {
+            foreach(GameObject g in liniiProiectie)
+            {
+                Object.Destroy(g);
+            }
+        }
+        // Scoatem subscrierea de la eveniment
+        UI.scalarePunct -= ScalareLiniiProiectie;
+
+        liniiProiectie = null;
     }
 
     private void AddLineBetweenPoints(int p1, int p2)
@@ -1558,6 +1576,9 @@ public class PointsData
             // Apelam generare linii pentru a ne genera noile linii
             GenerareLinii();
 
+            // Actualizam scalarea noilor puncte
+            UI.OnSliderValueChanged();
+
             if (!benchmarkMode)
             {
                 // Afisam drumul
@@ -1785,14 +1806,21 @@ public class PointsData
             List<Fata> listaFete = new List<Fata>();
             List<Muchie> listaMuchii = new List<Muchie>();
             List<float> listaUnghiuri = new List<float>();
+
+            // Lista proiectii
+            List<Proiectie> proiectii = new List<Proiectie>();
+            List<Proiectie> proiectiiRotite = new List<Proiectie>();
+
             // Luam secventa de fete parcursa
-            while(true)
+            while (true)
             {
                 // Ne oprim cand ajungem la radacina
                 if(final.parinte == null)
                 {
                     break;
                 }
+
+                proiectii.Add(final.p);
 
                 listaFete.Add(final.f);
                 listaMuchii.Add(final.muchieProiectie);
@@ -1803,6 +1831,7 @@ public class PointsData
             listaFete.Reverse();
             listaMuchii.Reverse();
             listaUnghiuri.Reverse();
+            proiectii.Reverse();
 
             // Lista cu punctele pe care le vom roti la fiecare pas
             List<Vector3> puncteDeRotit = new List<Vector3>();
@@ -1821,6 +1850,9 @@ public class PointsData
             indexVechi.Add(lIndex[0]);
             indexVechi.Add(lIndex[1]);
 
+            // adaugam proiectia initiala
+            proiectiiRotite.Add(proiectii[0]);
+
 
             for (int i = 1; i < listaFete.Count(); i++)
             {
@@ -1834,12 +1866,23 @@ public class PointsData
                     {
                         puncteDeRotit[j] = Utils.RotesteDupaLinie(puncteDeRotit[j], p1Dreapta, p2Dreapta, -listaUnghiuri[i]);
                     }
+
+                    // Rotim fiecare proiectie
+                    // Rotim fiecare punct
+                    for (int j = 0; j < proiectiiRotite.Count(); j++)
+                    {
+                        proiectiiRotite[j].p1 = Utils.RotesteDupaLinie(proiectiiRotite[j].p1, p1Dreapta, p2Dreapta, -listaUnghiuri[i]);
+                        proiectiiRotite[j].p2 = Utils.RotesteDupaLinie(proiectiiRotite[j].p2, p1Dreapta, p2Dreapta, -listaUnghiuri[i]);
+                    }
                 }
 
                 // Adaugam punctul nou
                 int indexPunctNou = listaFete[i].NodRamas(listaMuchii[i-1].a, listaMuchii[i - 1].b);
                 puncteDeRotit.Add(points[indexPunctNou].coordonate);
                 indexVechi.Add(indexPunctNou);
+
+                // Adaugam proiectia noua
+                proiectiiRotite.Add(proiectii[i]);
             }
 
             // Construim pointsData special pt suprafata desfacuta
@@ -1874,6 +1917,31 @@ public class PointsData
             // Generam toate liniile
             desfacerePlan.GenerareLinii();
 
+            liniiProiectie = new List<GameObject>();
+            Color culoareLinii = new Color(0.66F, 0.4F, 0.19F);
+
+            // Desenam liniile proiectiilor(zonele vizibile)
+            foreach (Proiectie p in proiectiiRotite)
+            {
+                GameObject linie = Object.Instantiate(prefabLinie);
+                liniiProiectie.Add(linie);
+
+                LineRenderer lineRenderer = linie.GetComponent<LineRenderer>();
+
+                // Plasam linia intre cele doua puncte
+                lineRenderer.SetPosition(0, p.p1);
+                lineRenderer.SetPosition(1, p.p2);
+
+                lineRenderer.sortingLayerName = "OnTop";
+
+                // Coloram linia
+                lineRenderer.startColor = culoareLinii;
+                lineRenderer.endColor = culoareLinii;
+            }
+
+            // Actualizam scalarea noilor puncte
+            UI.OnSliderValueChanged();
+
             // Afisam drumul
             desfacerePlan.drumMinimCalculat = new List<int>() { 0, puncteDeRotit.Count() - 1 };
             desfacerePlan.AfisareDrum(doarCuloare: true);
@@ -1883,17 +1951,10 @@ public class PointsData
 
         }
 
-        
-
         // Salvam statisticile global
         this.statistici = stats;
-        
-
-        // Afisam drumul
-        //AfisareDrum();
 
         callback?.Invoke();
-
     }
 
     public void AfisareDrum(List<int> drum = null, bool doarCuloare = false)
@@ -1964,6 +2025,16 @@ public class PointsData
         if (desfacerePlan != null)
             desfacerePlan.EliminaElementeDesenate();
 
+        if(liniiProiectie != null)
+        {
+            foreach(GameObject g in liniiProiectie)
+            {
+                Object.Destroy(g);
+            }
+
+            liniiProiectie = null;
+        }
+
         if(startPoint == -1 || endPoint == -1)
         {
             return false;
@@ -2014,6 +2085,17 @@ public class PointsData
         if (feteComune[0] == f)
             return feteComune[1];
         return feteComune[0];
+    }
+
+    private void ScalareLiniiProiectie(float scara)
+    {
+        if (liniiProiectie == null)
+            return;
+
+        foreach(GameObject linie in liniiProiectie)
+        {
+            linie.GetComponent<LineRenderer>().startWidth = scara / 3.3f;
+        }
     }
 }
 
@@ -2197,7 +2279,7 @@ public class AppManager : MonoBehaviour
 
     private void PopulareDropdown()
     {
-        // Cale de baza
+        // Cale de baza nu 
         string basePath = Application.streamingAssetsPath;
         // Cautam toate fisierele .txt din Input
         List<string> numeFisiere = Directory.GetFiles(basePath + "/Input","*.txt").ToList();
@@ -2218,6 +2300,9 @@ public class AppManager : MonoBehaviour
     {
         if (data != null)
             data.EliminaElementeDesenate();
+
+        // Ascunde statisticile
+        uiManager.AscundeStatistici();
 
         // Construim obiectul care va tine datele
         data =  new PointsData(prefabPunct, prefabLinie, startPointMaterial, endPointMaterial, uiManager);
@@ -2260,6 +2345,9 @@ public class AppManager : MonoBehaviour
 
         // Ascundem liniile
         data.AscundeLiniile();
+
+        // Ascunde statisticile
+        uiManager.AscundeStatistici();
 
         // Punem ui-ul de rulare
         uiManager.UiRulare();

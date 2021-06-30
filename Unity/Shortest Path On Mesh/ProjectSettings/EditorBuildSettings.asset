@@ -5,7 +5,7 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/Meniu.unity
     guid: 5755b5db806f65247bea1e1f1ee99261
   - enabled: 1
